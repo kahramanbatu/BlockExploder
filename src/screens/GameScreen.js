@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Dimensions, PanResponder, Alert, Text } from 'react-native';
+import { View, Dimensions, PanResponder, Alert, Text, Button } from 'react-native';
+import { Audio } from 'expo-av';
 import Svg from 'react-native-svg';
 import GamePiece from '../components/GamePiece';
 import Block from '../components/Block';
@@ -19,7 +20,7 @@ const pieceShapes = [
   [[1], [1], [1]]
 ];
 
-export default function GameScreen() {
+export default function GameScreen({ onReset }) {
   const [grid, setGrid] = useState(
     Array.from({ length: GRID_SIZE }, () =>
       Array.from({ length: GRID_SIZE }, () => null)
@@ -30,6 +31,21 @@ export default function GameScreen() {
   const [piecePosition, setPiecePosition] = useState({ x: CELL_SIZE * 3, y: CELL_SIZE * 9 });
   const [placed, setPlaced] = useState(false);
   const [score, setScore] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
+
+  const placeSound = useRef();
+  const clearSound = useRef();
+
+  useEffect(() => {
+    (async () => {
+      placeSound.current = await Audio.Sound.createAsync(require('../assets/sound_block_place.mp3'));
+      clearSound.current = await Audio.Sound.createAsync(require('../assets/sound_line_clear.mp3'));
+    })();
+    return () => {
+      placeSound.current?.sound?.unloadAsync();
+      clearSound.current?.sound?.unloadAsync();
+    };
+  }, []);
 
   function generateRandomShape() {
     return pieceShapes[Math.floor(Math.random() * pieceShapes.length)];
@@ -46,7 +62,12 @@ export default function GameScreen() {
       setTimeout(() => {
         clearFullLines();
         if (pieceIndex === 2) {
-          setPieceQueue(generatePieceQueue());
+          const newQueue = generatePieceQueue();
+          if (!canPlaceAny(newQueue, grid)) {
+            setGameOver(true);
+            return;
+          }
+          setPieceQueue(newQueue);
           setPieceIndex(0);
         } else {
           setPieceIndex(pieceIndex + 1);
@@ -61,15 +82,15 @@ export default function GameScreen() {
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderMove: (_, gesture) => {
-        if (!placed) {
+        if (!placed && !gameOver) {
           setPiecePosition({
             x: CELL_SIZE * 3 + gesture.dx,
             y: CELL_SIZE * 9 + gesture.dy
           });
         }
       },
-      onPanResponderRelease: () => {
-        if (!placed) {
+      onPanResponderRelease: async () => {
+        if (!placed && !gameOver) {
           const gridX = Math.floor(piecePosition.x / CELL_SIZE);
           const gridY = Math.floor(piecePosition.y / CELL_SIZE);
           if (canPlaceShape(currentShape, gridX, gridY)) {
@@ -87,6 +108,7 @@ export default function GameScreen() {
             });
             setGrid(newGrid);
             setPlaced(true);
+            await placeSound.current?.sound?.replayAsync();
           } else {
             Alert.alert('Invalid Move', 'Cannot place piece here.');
             setPiecePosition({ x: CELL_SIZE * 3, y: CELL_SIZE * 9 });
@@ -111,7 +133,18 @@ export default function GameScreen() {
     return true;
   };
 
-  const clearFullLines = () => {
+  const canPlaceAny = (shapes, grid) => {
+    for (const shape of shapes) {
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          if (canPlaceShape(shape, x, y)) return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  const clearFullLines = async () => {
     let newGrid = [...grid];
     let linesCleared = 0;
 
@@ -139,6 +172,7 @@ export default function GameScreen() {
 
     if (linesCleared > 0) {
       setScore(prev => prev + linesCleared * 10);
+      await clearSound.current?.sound?.replayAsync();
     }
     setGrid(newGrid);
   };
@@ -146,6 +180,7 @@ export default function GameScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#0a0a0a' }} {...panResponder.panHandlers}>
       <Text style={{ color: 'white', fontSize: 18, padding: 10 }}>Score: {score}</Text>
+      {gameOver && <Text style={{ color: 'red', fontSize: 22, textAlign: 'center' }}>Game Over</Text>}
       <Svg height="100%" width="100%">
         {grid.map((row, rowIndex) =>
           row.map((color, colIndex) => (
@@ -160,7 +195,7 @@ export default function GameScreen() {
             )
           ))
         )}
-        {!placed && (
+        {!placed && !gameOver && (
           <GamePiece
             shape={currentShape}
             startX={piecePosition.x}
@@ -169,6 +204,7 @@ export default function GameScreen() {
           />
         )}
       </Svg>
+      {gameOver && <Button title="Restart" onPress={onReset} />}
     </View>
   );
 }
