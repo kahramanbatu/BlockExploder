@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Dimensions } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Dimensions, PanResponder } from 'react-native';
 import Svg from 'react-native-svg';
 import GamePiece from '../components/GamePiece';
 import Block from '../components/Block';
@@ -25,11 +25,26 @@ export default function GameScreen() {
       Array.from({ length: GRID_SIZE }, () => ({ color: '#334455' }))
     )
   );
+  const [piecePosition, setPiecePosition] = useState({ x: CELL_SIZE * 3, y: CELL_SIZE * 9 });
+  const randomShape = useRef(pieceShapes[Math.floor(Math.random() * pieceShapes.length)]).current;
 
-  const randomShape = pieceShapes[Math.floor(Math.random() * pieceShapes.length)];
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, gesture) => {
+        setPiecePosition({
+          x: CELL_SIZE * 3 + gesture.dx,
+          y: CELL_SIZE * 9 + gesture.dy
+        });
+      },
+      onPanResponderRelease: () => {
+        // Here we will handle drop logic later
+      }
+    })
+  ).current;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
+    <View style={{ flex: 1, backgroundColor: '#0a0a0a' }} {...panResponder.panHandlers}>
       <Svg height="100%" width="100%">
         {grid.map((row, rowIndex) =>
           row.map((cell, colIndex) => (
@@ -44,8 +59,8 @@ export default function GameScreen() {
         )}
         <GamePiece
           shape={randomShape}
-          startX={CELL_SIZE * 3}
-          startY={CELL_SIZE * 9}
+          startX={piecePosition.x}
+          startY={piecePosition.y}
           cellSize={CELL_SIZE}
         />
       </Svg>
