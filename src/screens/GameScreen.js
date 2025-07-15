@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Dimensions, PanResponder, Alert } from 'react-native';
+import { View, Dimensions, PanResponder, Alert, Text } from 'react-native';
 import Svg from 'react-native-svg';
 import GamePiece from '../components/GamePiece';
 import Block from '../components/Block';
@@ -29,6 +29,7 @@ export default function GameScreen() {
   const [pieceIndex, setPieceIndex] = useState(0);
   const [piecePosition, setPiecePosition] = useState({ x: CELL_SIZE * 3, y: CELL_SIZE * 9 });
   const [placed, setPlaced] = useState(false);
+  const [score, setScore] = useState(0);
 
   function generateRandomShape() {
     return pieceShapes[Math.floor(Math.random() * pieceShapes.length)];
@@ -43,6 +44,7 @@ export default function GameScreen() {
   useEffect(() => {
     if (placed) {
       setTimeout(() => {
+        clearFullLines();
         if (pieceIndex === 2) {
           setPieceQueue(generatePieceQueue());
           setPieceIndex(0);
@@ -51,7 +53,7 @@ export default function GameScreen() {
         }
         setPiecePosition({ x: CELL_SIZE * 3, y: CELL_SIZE * 9 });
         setPlaced(false);
-      }, 500);
+      }, 300);
     }
   }, [placed]);
 
@@ -109,8 +111,41 @@ export default function GameScreen() {
     return true;
   };
 
+  const clearFullLines = () => {
+    let newGrid = [...grid];
+    let linesCleared = 0;
+
+    // Satır temizleme
+    newGrid = newGrid.filter(row => {
+      const full = row.every(cell => cell !== null);
+      if (full) linesCleared++;
+      return !full;
+    });
+
+    while (newGrid.length < GRID_SIZE) {
+      newGrid.unshift(Array(GRID_SIZE).fill(null));
+    }
+
+    // Sütun temizleme
+    for (let col = 0; col < GRID_SIZE; col++) {
+      const isFull = newGrid.every(row => row[col] !== null);
+      if (isFull) {
+        linesCleared++;
+        for (let row = 0; row < GRID_SIZE; row++) {
+          newGrid[row][col] = null;
+        }
+      }
+    }
+
+    if (linesCleared > 0) {
+      setScore(prev => prev + linesCleared * 10);
+    }
+    setGrid(newGrid);
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: '#0a0a0a' }} {...panResponder.panHandlers}>
+      <Text style={{ color: 'white', fontSize: 18, padding: 10 }}>Score: {score}</Text>
       <Svg height="100%" width="100%">
         {grid.map((row, rowIndex) =>
           row.map((color, colIndex) => (
