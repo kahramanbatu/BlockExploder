@@ -1,11 +1,23 @@
 import React, { useState } from 'react';
 import { View, Dimensions } from 'react-native';
 import Svg from 'react-native-svg';
+import GamePiece from '../components/GamePiece';
 import Block from '../components/Block';
 
 const { width } = Dimensions.get('window');
 const GRID_SIZE = 9;
 const CELL_SIZE = Math.floor(width / GRID_SIZE);
+
+const pieceShapes = [
+  [[1]],
+  [[1, 1]],
+  [[1], [1]],
+  [[1, 1], [1, 1]],
+  [[1, 0], [1, 1]],
+  [[0, 1], [1, 1]],
+  [[1, 1, 1]],
+  [[1], [1], [1]]
+];
 
 export default function GameScreen() {
   const [grid] = useState(
@@ -13,6 +25,8 @@ export default function GameScreen() {
       Array.from({ length: GRID_SIZE }, () => ({ color: '#334455' }))
     )
   );
+
+  const randomShape = pieceShapes[Math.floor(Math.random() * pieceShapes.length)];
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
@@ -28,6 +42,12 @@ export default function GameScreen() {
             />
           ))
         )}
+        <GamePiece
+          shape={randomShape}
+          startX={CELL_SIZE * 3}
+          startY={CELL_SIZE * 9}
+          cellSize={CELL_SIZE}
+        />
       </Svg>
     </View>
   );
