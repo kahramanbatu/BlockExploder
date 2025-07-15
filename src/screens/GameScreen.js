@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Dimensions, PanResponder, Alert, Text, Button } from 'react-native';
+import { View, Dimensions, PanResponder, Alert, Text, Button, ScrollView } from 'react-native';
 import { Audio } from 'expo-av';
 import Svg from 'react-native-svg';
 import GamePiece from '../components/GamePiece';
@@ -32,6 +32,7 @@ export default function GameScreen({ onReset }) {
   const [placed, setPlaced] = useState(false);
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
+  const [highScore, setHighScore] = useState(0);
 
   const placeSound = useRef();
   const clearSound = useRef();
@@ -65,6 +66,7 @@ export default function GameScreen({ onReset }) {
           const newQueue = generatePieceQueue();
           if (!canPlaceAny(newQueue, grid)) {
             setGameOver(true);
+            setHighScore(prev => Math.max(prev, score));
             return;
           }
           setPieceQueue(newQueue);
@@ -148,7 +150,6 @@ export default function GameScreen({ onReset }) {
     let newGrid = [...grid];
     let linesCleared = 0;
 
-    // Satır temizleme
     newGrid = newGrid.filter(row => {
       const full = row.every(cell => cell !== null);
       if (full) linesCleared++;
@@ -159,7 +160,6 @@ export default function GameScreen({ onReset }) {
       newGrid.unshift(Array(GRID_SIZE).fill(null));
     }
 
-    // Sütun temizleme
     for (let col = 0; col < GRID_SIZE; col++) {
       const isFull = newGrid.every(row => row[col] !== null);
       if (isFull) {
@@ -178,9 +178,15 @@ export default function GameScreen({ onReset }) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0a0a0a' }} {...panResponder.panHandlers}>
-      <Text style={{ color: 'white', fontSize: 18, padding: 10 }}>Score: {score}</Text>
-      {gameOver && <Text style={{ color: 'red', fontSize: 22, textAlign: 'center' }}>Game Over</Text>}
+    <ScrollView style={{ flex: 1, backgroundColor: '#0a0a0a' }} {...panResponder.panHandlers}>
+      <Text style={{ color: 'white', fontSize: 18, padding: 10 }}>Score: {score} | High Score: {highScore}</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 10 }}>
+        {pieceQueue.map((shape, index) => (
+          <View key={index} style={{ marginHorizontal: 4, opacity: pieceIndex === index ? 1 : 0.4 }}>
+            <GamePiece shape={shape} startX={0} startY={0} cellSize={10} />
+          </View>
+        ))}
+      </View>
       <Svg height="100%" width="100%">
         {grid.map((row, rowIndex) =>
           row.map((color, colIndex) => (
@@ -205,6 +211,6 @@ export default function GameScreen({ onReset }) {
         )}
       </Svg>
       {gameOver && <Button title="Restart" onPress={onReset} />}
-    </View>
+    </ScrollView>
   );
 }
