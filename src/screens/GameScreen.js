@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Dimensions, PanResponder, Alert } from 'react-native';
 import Svg from 'react-native-svg';
 import GamePiece from '../components/GamePiece';
@@ -25,9 +25,35 @@ export default function GameScreen() {
       Array.from({ length: GRID_SIZE }, () => null)
     )
   );
+  const [pieceQueue, setPieceQueue] = useState(generatePieceQueue());
+  const [pieceIndex, setPieceIndex] = useState(0);
   const [piecePosition, setPiecePosition] = useState({ x: CELL_SIZE * 3, y: CELL_SIZE * 9 });
   const [placed, setPlaced] = useState(false);
-  const shape = useRef(pieceShapes[Math.floor(Math.random() * pieceShapes.length)]).current;
+
+  function generateRandomShape() {
+    return pieceShapes[Math.floor(Math.random() * pieceShapes.length)];
+  }
+
+  function generatePieceQueue() {
+    return [generateRandomShape(), generateRandomShape(), generateRandomShape()];
+  }
+
+  const currentShape = pieceQueue[pieceIndex];
+
+  useEffect(() => {
+    if (placed) {
+      setTimeout(() => {
+        if (pieceIndex === 2) {
+          setPieceQueue(generatePieceQueue());
+          setPieceIndex(0);
+        } else {
+          setPieceIndex(pieceIndex + 1);
+        }
+        setPiecePosition({ x: CELL_SIZE * 3, y: CELL_SIZE * 9 });
+        setPlaced(false);
+      }, 500);
+    }
+  }, [placed]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -44,9 +70,9 @@ export default function GameScreen() {
         if (!placed) {
           const gridX = Math.floor(piecePosition.x / CELL_SIZE);
           const gridY = Math.floor(piecePosition.y / CELL_SIZE);
-          if (canPlaceShape(shape, gridX, gridY)) {
+          if (canPlaceShape(currentShape, gridX, gridY)) {
             const newGrid = [...grid];
-            shape.forEach((row, rowIndex) => {
+            currentShape.forEach((row, rowIndex) => {
               row.forEach((value, colIndex) => {
                 if (value === 1) {
                   const x = gridX + colIndex;
@@ -59,7 +85,6 @@ export default function GameScreen() {
             });
             setGrid(newGrid);
             setPlaced(true);
-            Alert.alert('Placed!', 'The piece has been placed on the grid.');
           } else {
             Alert.alert('Invalid Move', 'Cannot place piece here.');
             setPiecePosition({ x: CELL_SIZE * 3, y: CELL_SIZE * 9 });
@@ -102,7 +127,7 @@ export default function GameScreen() {
         )}
         {!placed && (
           <GamePiece
-            shape={shape}
+            shape={currentShape}
             startX={piecePosition.x}
             startY={piecePosition.y}
             cellSize={CELL_SIZE}
@@ -110,53 +135,5 @@ export default function GameScreen() {
         )}
       </Svg>
     </View>
-  );
-}
-
-// src/components/Block.js
-import React from 'react';
-import { Rect } from 'react-native-svg';
-
-export default function Block({ x, y, size, color }) {
-  return (
-    <Rect
-      x={x}
-      y={y}
-      width={size}
-      height={size}
-      fill={color}
-      stroke="black"
-      strokeWidth="1"
-      rx="5"
-      ry="5"
-    />
-  );
-}
-
-// src/components/GamePiece.js
-import React from 'react';
-import { G } from 'react-native-svg';
-import Block from './Block';
-
-export default function GamePiece({ shape, startX, startY, cellSize }) {
-  return (
-    <G>
-      {shape.map((row, rowIndex) =>
-        row.map((value, colIndex) => {
-          if (value === 1) {
-            return (
-              <Block
-                key={`${rowIndex}-${colIndex}`}
-                x={startX + colIndex * cellSize}
-                y={startY + rowIndex * cellSize}
-                size={cellSize}
-                color="#f39c12"
-              />
-            );
-          }
-          return null;
-        })
-      )}
-    </G>
   );
 }
